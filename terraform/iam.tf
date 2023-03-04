@@ -13,7 +13,7 @@ data aws_iam_policy_document lambda_s3 {
   statement {
     actions   = ["*"]
     resources = [
-      "arn:aws:s3:::bucket/${aws_s3_bucket.scrooge_resources_bucket.bucket}/*"
+      "arn:aws:s3:::${aws_s3_bucket.scrooge_resources_bucket.bucket}/*"
     ]
   }
 }

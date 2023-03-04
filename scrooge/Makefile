@@ -2,9 +2,11 @@
 
 .SILENT:
 
-aws_cred = AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)
+aws_cred = AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) IAM_ROLE_ARN=$(IAM_ROLE_ARN)
+envs = $(aws_cred) S3_BUCKET=$(S3_BUCKET)
+
 run:
-	$(aws_cred) go run main.go
+	$(envs) go run main.go
 
 repo = artronics
 tag = local

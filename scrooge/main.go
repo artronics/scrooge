@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"io"
+	"os"
 	"time"
 )
 
@@ -17,12 +21,12 @@ type RecordTime struct {
 }
 
 func (t *RecordTime) UnmarshalJSON(b []byte) (err error) {
-	date, err := time.Parse(`"2023-03-04T02:22:05+00:00"`, string(b))
-	if err != nil {
-		return err
+	if string(b) == "null" || string(b) == `""` {
+		return nil
 	}
-	t.Time = date
-	return
+	dateTime, err := time.Parse(`"`+time.RFC3339+`"`, string(b))
+	*t = RecordTime{dateTime}
+	return err
 }
 
 type ResourceRecord struct {
@@ -47,16 +51,24 @@ func HandleRequest(ctx context.Context, name MyEvent) (string, error) {
 
 func main() {
 	fmt.Println("running!")
-	cfg, err := awsConf()
+	iamRole := os.Getenv("IAM_ROLE_ARN")
+	s3Bucket := os.Getenv("S3_BUCKET")
+	fmt.Printf("s3 bucket: %s\n", s3Bucket)
+	fmt.Printf("iam role: %s\n", iamRole)
+
+	cfg, err := awsConf(iamRole)
 	if err != nil {
 		panic(err.Error())
 	}
+
 	s3Res := S3Bucket{S3Client: s3.NewFromConfig(*cfg)}
-	res, err := s3Res.DownloadFile("scrooge-test-resources", "db.json")
+	res, err := s3Res.DownloadFile(s3Bucket, "db.json")
 	if err != nil {
 		panic(err.Error())
 	}
-	checkResources(res)
+	if err = checkResources(res); err != nil {
+		panic(err.Error())
+	}
 
 	fmt.Printf("%s\n", res)
 	lambda.Start(HandleRequest)
@@ -70,10 +82,16 @@ func checkResources(db []ResourceRecord) error {
 	return nil
 }
 
-func awsConf() (*aws.Config, error) {
+func awsConf(iamRole string) (*aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("eu-west-2"))
 	if err != nil {
 		return nil, err
+	}
+
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+		stsClient := sts.NewFromConfig(cfg)
+		provider := stscreds.NewAssumeRoleProvider(stsClient, iamRole)
+		cfg.Credentials = aws.NewCredentialsCache(provider)
 	}
 
 	return &cfg, nil
@@ -94,7 +112,9 @@ func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Reso
 	}
 
 	body, err := io.ReadAll(result.Body)
-	if err := json.Unmarshal(body, &resDb); err != nil {
+	reader := bytes.NewReader(body)
+	//body := strings.NewReader(result.Body)
+	if err := json.NewDecoder(reader).Decode(&resDb); err != nil {
 		return resDb, err
 	}
 

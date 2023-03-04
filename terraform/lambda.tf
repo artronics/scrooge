@@ -5,6 +5,13 @@ resource "aws_lambda_function" "scrooge_lambda" {
   package_type     = "Image"
   role             = aws_iam_role.lambda_role.arn
 
+  environment {
+    variables = {
+      S3_BUCKET    = aws_s3_bucket.scrooge_resources_bucket.bucket
+      IAM_ROLE_ARN = aws_iam_role.lambda_role.arn
+    }
+  }
+
   depends_on = [null_resource.scrooge_image_push]
 
 }
