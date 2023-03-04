@@ -9,6 +9,11 @@ plan:
 	$(tf) plan
 
 apply:
+	$(tf) workspace select default
+	$(tf) apply -auto-approve -var="tag=develop"
+
+apply-test:
+	$(tf) workspace select test
 	$(tf) apply -auto-approve -var="tag=develop"
 
 lock-provider:

@@ -13,13 +13,14 @@ terraform {
 }
 
 locals {
-  prefix = local.project
+  is_test = terraform.workspace == "test"
+  prefix  = terraform.workspace == "test" ? "${local.project}-test" : local.project
 }
 
 locals {
-  project   = "scrooge"
-  workspace = "dev"
-  tier      = "platform"
+  project       = "scrooge"
+  workspace_tag = local.is_test ? "test" : "dev"
+  tier          = "platform"
 }
 
 provider "aws" {
@@ -28,7 +29,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project   = local.project
-      Workspace = local.workspace
+      Workspace = local.workspace_tag
       Tier      = local.tier
     }
   }

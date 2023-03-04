@@ -1,0 +1,9 @@
+[
+  {
+    "project": "test1",
+    "workspace": "test1",
+    "resource": "aws_s3_bucket",
+    "name": "scrooge-test-resources-test-db",
+    "checked_at": "2023-03-04T02:22:05+00:00"
+  }
+]

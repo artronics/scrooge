@@ -16,5 +16,12 @@ RUN CGO_ENABLED=0 go build -o app .
 FROM hashicorp/terraform
 COPY --from=go_build /app/app /bin/scrooge
 
+RUN mkdir project
+COPY main.template.tf project/main.tf
+COPY terraformrc.template $HOME/.terraformrc
+
+VOLUME /cache
+ENV TF_PLUGIN_CACHE_DIR="/cache/.terraform.d/plugin-cache"
+
 ENTRYPOINT ["scrooge"]
 CMD ["scrooge"]
