@@ -12,6 +12,11 @@ resource "aws_lambda_function" "scrooge_lambda" {
     }
   }
 
+  file_system_config {
+    arn              = aws_efs_access_point.lambda_storage_access_point.arn
+    local_mount_path = "/mnt/cache"
+  }
+
   depends_on = [null_resource.scrooge_image_push]
 
 }

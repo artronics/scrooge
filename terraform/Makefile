@@ -1,6 +1,8 @@
 -include .env
 
-tf = terraform
+tf = AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) terraform
+
+.SILENT:
 
 init:
 	$(tf) init -backend-config="bucket=scrooge-ptl-terraform-state"
