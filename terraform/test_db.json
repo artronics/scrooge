@@ -2,8 +2,12 @@
   {
     "project": "test1",
     "workspace": "test1",
-    "resource": "aws_s3_bucket",
-    "name": "scrooge-test-resources-test-db",
-    "checked_at": "2006-01-02T15:04:05+07:00"
+    "resources": [
+      {
+        "strategy": "s3:inactivity",
+        "id": "scrooge-test-resources-test-db",
+        "checked_at": "2006-01-02T15:04:05+07:00"
+      }
+    ]
   }
 ]

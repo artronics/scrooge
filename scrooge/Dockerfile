@@ -14,13 +14,32 @@ COPY . ./
 RUN CGO_ENABLED=0 go build -o app .
 
 FROM hashicorp/terraform
+#
+#ENV USER=terraform
+#ENV UID=1000
+#ENV GID=1000
+#RUN addgroup -g $GID $USER && adduser \
+#    --disabled-password \
+#    --gecos "" \
+#    --ingroup "$USER" \
+#    --ingroup "root" \
+#    --uid "$UID" \
+#    "$USER"
+#
+#USER $USER
+
 COPY --from=go_build /app/app /bin/scrooge
 
-COPY main.template.tf project/main.tf
+COPY main.template.tf projects/main.tf
 COPY terraformrc.template $HOME/.terraformrc
+COPY destroy /bin/destroy
+RUN chmod +x /bin/destroy
 
-VOLUME /cache
-ENV TF_PLUGIN_CACHE_DIR="/cache/.terraform.d/plugin-cache"
+#VOLUME /mnt/.terraform.d
+#RUN ln -s /mnt/.terraform.d /root/.terraform.d
+ENV TF_PLUGIN_CACHE_DIR="/root/.terraform.d/plugin-cache"
+
+# TODO: Delete this
+# RUN apk add vim
 
 ENTRYPOINT ["scrooge"]
-CMD ["scrooge"]

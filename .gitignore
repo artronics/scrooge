@@ -1,6 +1,5 @@
 .idea
 .env
-.build
+**/build
 terraform/.terraform
-terraform/build
 scrooge/volume-cache

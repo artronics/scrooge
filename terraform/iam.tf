@@ -33,3 +33,8 @@ resource aws_iam_role_policy_attachment lambda_s3 {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_s3.arn
 }
+
+resource "aws_iam_role_policy_attachment" "AWSLambdaVPCAccessExecutionRole" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}

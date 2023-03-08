@@ -1,0 +1,30 @@
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = local.vpc_id
+  service_name      = "com.amazonaws.eu-west-2.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private_vpc_endpoint_rt.id]
+
+  tags = {
+    Name = "${local.prefix}-s3"
+  }
+}
+
+resource "aws_route_table" "private_vpc_endpoint_rt" {
+  vpc_id = local.vpc_id
+
+  tags = {
+    Name = local.prefix
+  }
+}
+
+resource "aws_vpc_endpoint_route_table_association" "s3_vpc_endpoint_route_table" {
+  route_table_id  = aws_route_table.private_vpc_endpoint_rt.id
+  vpc_endpoint_id = aws_vpc_endpoint.s3.id
+}
+
+resource "aws_route_table_association" "private_route_table_assoc" {
+  count = length(local.platform_subnet_ids)
+
+  route_table_id = aws_route_table.private_vpc_endpoint_rt.id
+  subnet_id      = local.platform_subnet_ids[count.index]
+}

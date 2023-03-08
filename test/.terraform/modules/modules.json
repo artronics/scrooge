@@ -1,0 +1,14 @@
+{
+  "Modules": [
+    {
+      "Key": "",
+      "Source": "",
+      "Dir": "."
+    },
+    {
+      "Key": "scrooge",
+      "Source": "../module",
+      "Dir": "../module"
+    }
+  ]
+}

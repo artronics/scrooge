@@ -29,32 +29,32 @@ func (t *RecordTime) UnmarshalJSON(b []byte) (err error) {
 	return err
 }
 
-type ResourceRecord struct {
+type Record struct {
 	Project   string     `json:"project"`
 	Workspace string     `json:"workspace"`
-	Resource  string     `json:"resource"`
-	Name      string     `json:"name"`
+	Resources []Resource `json:"resources"`
+}
+
+type Resource struct {
+	Id        string     `json:"id"`
+	Strategy  string     `json:"strategy"`
 	CheckedAt RecordTime `json:"checked_at"`
 }
 
-func (r ResourceRecord) NeedsChecking() bool {
+func (r Record) NeedsChecking() bool {
 	return false
 }
 
-type MyEvent struct {
-	Name string `json:"name"`
-}
-
-func HandleRequest(ctx context.Context, name MyEvent) (string, error) {
-	return fmt.Sprintf("yoo %s!", name.Name), nil
-}
-
-func main() {
-	fmt.Println("running!")
+func HandleRequest(ctx context.Context, record Record) (string, error) {
 	iamRole := os.Getenv("IAM_ROLE_ARN")
 	s3Bucket := os.Getenv("S3_BUCKET")
+	var mode = "add"
+	if os.Getenv("MODE") == "destroy" {
+		mode = "destroy"
+	}
 	fmt.Printf("s3 bucket: %s\n", s3Bucket)
 	fmt.Printf("iam role: %s\n", iamRole)
+	fmt.Printf("mode: %s\n", mode)
 
 	cfg, err := awsConf(iamRole)
 	if err != nil {
@@ -62,24 +62,47 @@ func main() {
 	}
 
 	s3Res := S3Bucket{S3Client: s3.NewFromConfig(*cfg)}
-	res, err := s3Res.DownloadFile(s3Bucket, "db.json")
+	objKey := "db.json"
+	db, err := s3Res.DownloadFile(s3Bucket, objKey)
 	if err != nil {
 		panic(err.Error())
 	}
-	if err = checkResources(res); err != nil {
-		panic(err.Error())
+	if mode == "destroy" {
+		if err = checkResources(db); err != nil {
+			panic(err.Error())
+		}
+		return fmt.Sprintf("destroy %s!", "resources"), nil
+	} else {
+		dbModified, err := updateOrAddRecord(db, record)
+		if err != nil {
+			panic(err.Error())
+		}
+		if err = s3Res.WriteFile(s3Bucket, objKey, dbModified); err != nil {
+			panic(err.Error())
+		}
+		return fmt.Sprintf("Added or updated %s!", record), nil
 	}
-
-	fmt.Printf("%s\n", res)
-	lambda.Start(HandleRequest)
 }
 
-func checkResources(db []ResourceRecord) error {
-	for record := range db {
+func checkResources(db []Record) error {
+	for _, record := range db {
 		fmt.Printf("%s", record)
 	}
-
 	return nil
+}
+
+func updateOrAddRecord(db []Record, record Record) ([]Record, error) {
+	for i, r := range db {
+		if r.Project == record.Project && r.Workspace == record.Workspace {
+			fmt.Printf("record updated:\n %s\n", record)
+			db[i] = record
+			return db, nil
+		}
+	}
+
+	fmt.Printf("add new record:\n %s\n", record)
+	db = append(db, record)
+	return db, nil
 }
 
 func awsConf(iamRole string) (*aws.Config, error) {
@@ -101,8 +124,8 @@ type S3Bucket struct {
 	S3Client *s3.Client
 }
 
-func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]ResourceRecord, error) {
-	resDb := make([]ResourceRecord, 0)
+func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Record, error) {
+	resDb := make([]Record, 0)
 	result, err := basics.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
@@ -112,11 +135,29 @@ func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Reso
 	}
 
 	body, err := io.ReadAll(result.Body)
-	reader := bytes.NewReader(body)
-	//body := strings.NewReader(result.Body)
-	if err := json.NewDecoder(reader).Decode(&resDb); err != nil {
+	if err := json.Unmarshal(body, &resDb); err != nil {
 		return resDb, err
 	}
-
 	return resDb, err
+}
+
+func (basics S3Bucket) WriteFile(bucketName string, objectKey string, db []Record) error {
+	content, err := json.Marshal(db)
+	if err != nil {
+		return err
+	}
+
+	contentType := "application/json"
+	_, err = basics.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(bucketName),
+		Key:         aws.String(objectKey),
+		Body:        bytes.NewReader(content),
+		ContentType: &contentType,
+	})
+
+	return err
+}
+
+func main() {
+	lambda.Start(HandleRequest)
 }

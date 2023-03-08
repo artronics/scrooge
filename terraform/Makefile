@@ -8,7 +8,7 @@ init:
 	$(tf) init -backend-config="bucket=scrooge-ptl-terraform-state"
 
 plan:
-	$(tf) plan
+	$(tf) plan -var="tag=develop"
 
 apply:
 	$(tf) workspace select default
@@ -21,4 +21,4 @@ apply-test:
 lock-provider:
 	$(tf) providers lock -platform=darwin_arm64 -platform=darwin_amd64 -platform=linux_amd64 -platform=windows_amd64
 
-.PHONY: init plan lock-provider
+.PHONY: init plan apply apply-test lock-provider

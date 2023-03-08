@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: command <project-name> <terraform-dir> <workspace>"
+    exit 1
+fi
+
+project=$1
+workspace=$2
+echo "project: $1"
+echo "workspace: $2"
+
+cd /
+mkdir -p "$HOME/.terraform.d/plugin-cache/" > /dev/null 2>&1
+mkdir -p "projects/$project"
+cp projects/main.tf "projects/$project/main.tf"
+cd "projects/$project"
+
+s3_state="$1-ptl-terraform-state"
+terraform init -backend-config="bucket=$s3_state"
+terraform workspace select "$workspace"

@@ -6,19 +6,38 @@ resource "aws_ecr_repository" "scrooge_repo" {
 locals {
   scrooge_path = "${path.cwd}/../${local.project}"
   image_tag    = "${aws_ecr_repository.scrooge_repo.repository_url}:${var.tag}"
+  build_dir    = abspath("${path.root}/build")
 }
 
-data "archive_file" "scrooge_archive" {
+data "archive_file" "scrooge_source_archive" {
   type        = "zip"
   source_dir  = local.scrooge_path
-  output_path = "build/${local.project}.zip"
+  output_path = "${local.build_dir}/${local.project}_src.zip"
+}
+
+data "archive_file" "scrooge_bin_archive" {
+  type        = "zip"
+  source_file = "${local.build_dir}/${local.project}"
+  output_path = "${local.build_dir}/${local.project}.zip"
+  depends_on  = [null_resource.build_scrooge]
+}
+
+resource "null_resource" "build_scrooge" {
+  triggers = {
+    src_hash = data.archive_file.scrooge_source_archive.output_sha
+  }
+  provisioner "local-exec" {
+    command = <<EOF
+cd ${local.scrooge_path}
+GO111MODULE=on GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${local.build_dir}/scrooge github.com/artronics/scrooge
+EOF
+  }
 }
 
 resource "null_resource" "scrooge_image_push" {
-  triggers   = {
-    src_hash = data.archive_file.scrooge_archive.output_sha
+  triggers = {
+    src_hash = data.archive_file.scrooge_source_archive.output_sha
   }
-
   provisioner "local-exec" {
     command = <<EOF
 docker build -t ${local.image_tag} ${local.scrooge_path}
