@@ -9,17 +9,21 @@ if [ "$#" -le 2 ]; then
 fi
 
 project=$1
-workspace=$2
 echo "project: $1"
+workspace=$2
 echo "workspace: $2"
+shift 2
+
+project_dir=$project:$workspace
+echo "project dir: $project_dir"
+s3_state="$project-ptl-terraform-state"
+echo "s3 bucket for state: $s3_state"
 
 cd /
-project_dir=$project:$workspace
 mkdir -p "projects/$project_dir"
 cp projects/main.tf "projects/$project_dir/main.tf"
 cd "projects/$project_dir"
 
-s3_state="$project-ptl-terraform-state"
 terraform init -backend-config="bucket=$s3_state"
 terraform workspace select "$workspace"
-echo terraform destroy -auto-approve "${@: 2}";
+echo terraform destroy -auto-approve "$@";

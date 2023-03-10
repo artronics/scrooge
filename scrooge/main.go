@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -36,9 +35,10 @@ type Record struct {
 }
 
 type Resource struct {
-	Id        string     `json:"id"`
-	Strategy  string     `json:"strategy"`
-	CheckedAt RecordTime `json:"checked_at"`
+	ResourceAddress    string     `json:"resource_address"`
+	StrategyResourceId string     `json:"strategy_resource_id"`
+	Strategy           string     `json:"strategy"`
+	CheckedAt          RecordTime `json:"checked_at"`
 }
 
 func (r Record) NeedsChecking() bool {
@@ -68,7 +68,12 @@ func HandleRequest(ctx context.Context, record Record) (string, error) {
 		panic(err.Error())
 	}
 	if mode == "destroy" {
-		if err = checkResources(db); err != nil {
+		dbModified, err := checkResources(db)
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Printf("modified db %s\n", dbModified)
+		if err = s3Res.WriteFile(s3Bucket, objKey, dbModified); err != nil {
 			panic(err.Error())
 		}
 		return fmt.Sprintf("destroy %s!", "resources"), nil
@@ -84,11 +89,36 @@ func HandleRequest(ctx context.Context, record Record) (string, error) {
 	}
 }
 
-func checkResources(db []Record) error {
+func checkResources(db []Record) ([]Record, error) {
+	// TODO: make this async
 	for _, record := range db {
-		fmt.Printf("%s", record)
+		resToDestroy := make([]string, 0)
+		for _, resource := range record.Resources {
+			switch resource.Strategy {
+			case "s3:inactivity":
+				shouldDestroy, err := S3InactivityStrategy(resource)
+				if err != nil {
+					return db, err
+				}
+				if shouldDestroy {
+					resToDestroy = append(resToDestroy, resource.ResourceAddress)
+				}
+			default:
+				return db, fmt.Errorf("uknown/invalid strategy: %s", resource.Strategy)
+			}
+		}
+		if len(resToDestroy) != 0 {
+			if err := Destroy(record.Project, record.Workspace, resToDestroy); err != nil {
+				return db, err
+			}
+		}
+		for i, _ := range record.Resources {
+			record.Resources[i].CheckedAt = RecordTime{time.Now()}
+		}
+
+		fmt.Printf("final db %s\n", db)
 	}
-	return nil
+	return db, nil
 }
 
 func updateOrAddRecord(db []Record, record Record) ([]Record, error) {
@@ -159,5 +189,9 @@ func (basics S3Bucket) WriteFile(bucketName string, objectKey string, db []Recor
 }
 
 func main() {
-	lambda.Start(HandleRequest)
+	//lambda.Start(HandleRequest)
+	err := Destroy("scrooge-resource-test", "default", []string{"res1", "res2"})
+	if err != nil {
+		panic(err.Error())
+	}
 }
