@@ -1,6 +1,6 @@
 locals {
-  lambda_destroy_timeout = 5
-  lambda_add_timeout     = 5
+  lambda_destroy_timeout = 60 * 3
+  lambda_add_timeout     = 15
   lambda_common_envs     = {
     S3_BUCKET    = aws_s3_bucket.scrooge_resources_bucket.bucket
     IAM_ROLE_ARN = aws_iam_role.lambda_role.arn
@@ -28,7 +28,7 @@ resource "aws_lambda_function" "scrooge_destroy_lambda" {
 
   file_system_config {
     arn              = local.terraform_plugin_cache_efs_access_point
-    local_mount_path = "/mnt/.terraform.d"
+    local_mount_path = "/mnt/projects"
   }
 
   depends_on = [null_resource.scrooge_image_push]

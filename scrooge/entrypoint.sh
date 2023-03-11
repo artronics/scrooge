@@ -2,9 +2,7 @@
 set -e
 
 cd /
-mkdir -p "$HOME/.terraform.d/plugin-cache/" > /dev/null 2>&1
+mkdir -p "/mnt/projects/.terraform.d/plugin-cache"
 
 scrooge
-/bin/sh
-
-#terraform init -backend-config="bucket=scrooge-resource-test-ptl-terraform-state"
+# destroy scrooge-resource-test default "-target=aws_s3_bucket.scrooge-resource-test-test-2"

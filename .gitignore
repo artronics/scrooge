@@ -2,4 +2,4 @@
 .env
 **/build
 terraform/.terraform
-scrooge/volume-cache
+**/volume-*

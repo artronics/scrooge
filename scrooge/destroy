@@ -2,9 +2,7 @@
 set -e
 
 if [ "$#" -le 2 ]; then
-#    echo "Usage: command <project-name> <terraform-dir> <workspace>"
     echo "Usage: command <project-name> <workspace> <res#1> ... <res#n>"
-
     exit 1
 fi
 
@@ -20,10 +18,16 @@ s3_state="$project-ptl-terraform-state"
 echo "s3 bucket for state: $s3_state"
 
 cd /
-mkdir -p "projects/$project_dir"
-cp projects/main.tf "projects/$project_dir/main.tf"
-cd "projects/$project_dir"
+prj_base_path="/mnt/projects"
+mkdir -p "$prj_base_path/$project_dir"
+cp /main.tf "$prj_base_path/$project_dir/main.tf"
+cd "$prj_base_path/$project_dir"
 
+echo terraform init -backend-config="bucket=$s3_state"
 terraform init -backend-config="bucket=$s3_state"
+
+echo terraform workspace select "$workspace"
 terraform workspace select "$workspace"
-echo terraform destroy -auto-approve "$@";
+
+echo terraform destroy -auto-approve "$@"
+terraform destroy -auto-approve "$@"

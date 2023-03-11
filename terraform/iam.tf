@@ -12,8 +12,20 @@ data aws_iam_policy_document lambda_assume_role {
 data aws_iam_policy_document lambda_s3 {
   statement {
     actions   = ["*"]
+    effect    = "Allow"
     resources = [
-      "arn:aws:s3:::${aws_s3_bucket.scrooge_resources_bucket.bucket}/*"
+      "arn:aws:s3:::*/*"
+    ]
+  }
+  statement {
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    effect    = "Allow"
+    resources = [
+      aws_cloudwatch_log_group.scrooge_destroy_log.arn,
+      aws_cloudwatch_log_group.scrooge_destroy_log.arn
     ]
   }
 }

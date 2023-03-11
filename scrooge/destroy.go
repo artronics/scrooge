@@ -12,14 +12,13 @@ import (
 func Destroy(project, workspace string, resources []string) error {
 	args := []string{project, workspace}
 	for _, res := range resources {
-		args = append(args, fmt.Sprintf("-destroy=%s", res))
+		args = append(args, fmt.Sprintf("-target=%s", res))
 	}
 
 	_, err := Exec("destroy", args, nil, true)
 	if err != nil {
 		return err
 	}
-	//fmt.Println(stdout)
 
 	return nil
 }

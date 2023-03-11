@@ -20,7 +20,8 @@ docker-build:
 	docker build -t $(repo)/scrooge:$(tag) .
 
 docker-run: docker-build
-	docker run --rm -it -v $(shell pwd)/volume-cache:/mnt/.terraform.d \
+	docker run --rm -it \
+	-v $(shell pwd)/../volume-projects:/mnt/projects \
 	-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) \
 	$(opt)	$(repo)/scrooge:$(tag)
 

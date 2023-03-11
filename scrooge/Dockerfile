@@ -30,17 +30,14 @@ FROM hashicorp/terraform
 
 COPY --from=go_build /app/app /bin/scrooge
 
-COPY main.template.tf /projects/main.tf
+COPY main.template.tf /main.tf
 COPY terraformrc.template $HOME/.terraformrc
 COPY destroy /bin/destroy
 COPY entrypoint.sh /bin/entrypoint.sh
 RUN chmod +x /bin/destroy && chmod +x /bin/entrypoint.sh
 
-VOLUME /mnt/.terraform.d
-RUN ln -s /mnt/.terraform.d /root/.terraform.d
-ENV TF_PLUGIN_CACHE_DIR="/root/.terraform.d/plugin-cache"
-
-# TODO: Delete this
-# RUN apk add vim
+VOLUME /mnt/projects
+ENV TF_PLUGIN_CACHE_DIR="/mnt/projects/.terraform.d/plugin-cache"
+ENV MOUNT_POINT="/mnt/projects"
 
 ENTRYPOINT ["entrypoint.sh"]

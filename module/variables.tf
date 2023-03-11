@@ -8,9 +8,10 @@ variable "workspace" {
 
 variable "resources" {
   type = list(object({
-    resource_address     = string
-    strategy             = string
-    strategy_resource_id = string
+    resource_address        = string
+    strategy                = string
+    strategy_resource_id    = string
+    expiry_duration_minutes = number
   }))
   validation {
     condition = alltrue([

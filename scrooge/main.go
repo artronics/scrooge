@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -35,10 +36,11 @@ type Record struct {
 }
 
 type Resource struct {
-	ResourceAddress    string     `json:"resource_address"`
-	StrategyResourceId string     `json:"strategy_resource_id"`
-	Strategy           string     `json:"strategy"`
-	CheckedAt          RecordTime `json:"checked_at"`
+	ResourceAddress       string     `json:"resource_address"`
+	StrategyResourceId    string     `json:"strategy_resource_id"`
+	Strategy              string     `json:"strategy"`
+	ExpiryDurationMinutes int        `json:"expiry_duration_minutes"`
+	CheckedAt             RecordTime `json:"checked_at"`
 }
 
 func (r Record) NeedsChecking() bool {
@@ -68,11 +70,10 @@ func HandleRequest(ctx context.Context, record Record) (string, error) {
 		panic(err.Error())
 	}
 	if mode == "destroy" {
-		dbModified, err := checkResources(db)
+		dbModified, err := checkResources(*cfg, db)
 		if err != nil {
 			panic(err.Error())
 		}
-		fmt.Printf("modified db %s\n", dbModified)
 		if err = s3Res.WriteFile(s3Bucket, objKey, dbModified); err != nil {
 			panic(err.Error())
 		}
@@ -89,14 +90,18 @@ func HandleRequest(ctx context.Context, record Record) (string, error) {
 	}
 }
 
-func checkResources(db []Record) ([]Record, error) {
+func checkResources(cfg aws.Config, db []Record) ([]Record, error) {
 	// TODO: make this async
 	for _, record := range db {
 		resToDestroy := make([]string, 0)
 		for _, resource := range record.Resources {
 			switch resource.Strategy {
 			case "s3:inactivity":
-				shouldDestroy, err := S3InactivityStrategy(resource)
+				s, err := NewS3Inactivity(cfg, resource.StrategyResourceId)
+				if err != nil {
+					return db, err
+				}
+				shouldDestroy, err := s.ShouldBeDeleted(resource.ExpiryDurationMinutes)
 				if err != nil {
 					return db, err
 				}
@@ -154,9 +159,9 @@ type S3Bucket struct {
 	S3Client *s3.Client
 }
 
-func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Record, error) {
+func (b S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Record, error) {
 	resDb := make([]Record, 0)
-	result, err := basics.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+	result, err := b.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
 	})
@@ -171,14 +176,14 @@ func (basics S3Bucket) DownloadFile(bucketName string, objectKey string) ([]Reco
 	return resDb, err
 }
 
-func (basics S3Bucket) WriteFile(bucketName string, objectKey string, db []Record) error {
+func (b S3Bucket) WriteFile(bucketName string, objectKey string, db []Record) error {
 	content, err := json.Marshal(db)
 	if err != nil {
 		return err
 	}
 
 	contentType := "application/json"
-	_, err = basics.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err = b.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(bucketName),
 		Key:         aws.String(objectKey),
 		Body:        bytes.NewReader(content),
@@ -188,10 +193,19 @@ func (basics S3Bucket) WriteFile(bucketName string, objectKey string, db []Recor
 	return err
 }
 
-func main() {
-	//lambda.Start(HandleRequest)
-	err := Destroy("scrooge-resource-test", "default", []string{"res1", "res2"})
+func (b S3Bucket) ModifiedAt(bucketName string, objectKey string) (*time.Time, error) {
+	result, err := b.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+	})
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
+
+	return result.LastModified, nil
+}
+
+func main() {
+	fmt.Println("starting ...")
+	lambda.Start(HandleRequest)
 }
