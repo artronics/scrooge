@@ -1,5 +1,5 @@
 locals {
-  lambda_destroy_timeout = 60 * 3
+  lambda_destroy_timeout = 60 * 1
   lambda_add_timeout     = 15
   lambda_common_envs     = {
     S3_BUCKET    = aws_s3_bucket.scrooge_resources_bucket.bucket
@@ -14,6 +14,7 @@ resource "aws_lambda_function" "scrooge_destroy_lambda" {
   package_type     = "Image"
   role             = aws_iam_role.lambda_role.arn
   timeout          = local.lambda_destroy_timeout
+  memory_size      = 512
   environment {
     variables = merge(local.lambda_common_envs, {
       MODE = "destroy"

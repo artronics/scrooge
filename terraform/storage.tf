@@ -16,15 +16,14 @@ resource "aws_efs_access_point" "scrooge_efs_access_point" {
   root_directory {
     path = "/${local.prefix}/projects"
     creation_info {
-      owner_gid   = 0
-      owner_uid   = 0
-      permissions = "666"
+      owner_gid   = 1001
+      owner_uid   = 1001
+      permissions = "777"
     }
   }
   posix_user {
-    uid            = 0
-    gid            = 0
-    secondary_gids = [1000]
+    uid = 1001
+    gid = 1001
   }
 
   tags = {

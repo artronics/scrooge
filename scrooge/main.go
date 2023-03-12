@@ -58,6 +58,8 @@ func HandleRequest(ctx context.Context, record Record) (string, error) {
 	fmt.Printf("iam role: %s\n", iamRole)
 	fmt.Printf("mode: %s\n", mode)
 
+	//createFile()
+
 	cfg, err := awsConf(iamRole)
 	if err != nil {
 		panic(err.Error())
@@ -206,6 +208,38 @@ func (b S3Bucket) ModifiedAt(bucketName string, objectKey string) (*time.Time, e
 }
 
 func main() {
-	fmt.Println("starting ...")
+	//local()
 	lambda.Start(HandleRequest)
+}
+
+func local() {
+	fmt.Println("starting ...")
+	rec := Record{}
+	ctx := context.TODO()
+
+	request, err := HandleRequest(ctx, rec)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(request)
+}
+
+func createFile() {
+
+	//input, err := os.ReadFile("/main.tf")
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+
+	input := []byte("hello y ")
+	err := os.WriteFile("/mnt/projects/testfile.tf", input, 0666)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	input, err = os.ReadFile("/mnt/projects/testfile.tf")
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(input)
 }

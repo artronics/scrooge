@@ -8,7 +8,7 @@ module "scrooge" {
   workspace = "default"
   resources = [
     {
-      resource_address        = "aws_s3_bucket.${aws_s3_bucket.test-1-resource.bucket}"
+      resource_address        = "aws_s3_bucket.test-1-resource"
       strategy                = "s3:inactivity"
       strategy_resource_id    = "${aws_s3_object.strategy_data.bucket}/${aws_s3_object.strategy_data.key}"
       expiry_duration_minutes = 1
